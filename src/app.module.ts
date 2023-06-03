@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { Category } from './category/category.model';
 import { CategoryModule } from './category/category.module';
+import { ToolModule } from './tool/tool.module';
+import { Tool } from './tool/tool.model';
 
 @Module({
   controllers: [],
@@ -18,10 +20,11 @@ import { CategoryModule } from './category/category.module';
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
-      models: [Category],
+      models: [Category, Tool],
       autoLoadModels: true,
     }),
     CategoryModule,
+    ToolModule,
   ],
 })
 export class AppModule {}

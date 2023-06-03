@@ -1,4 +1,5 @@
-import { Column, DataType, Model, Table } from 'sequelize-typescript';
+import { Column, DataType, HasMany, Model, Table } from 'sequelize-typescript';
+import { Tool } from 'src/tool/tool.model';
 
 interface CategoryCreationAtrr {
   name: string;
@@ -7,7 +8,7 @@ interface CategoryCreationAtrr {
   html_title: string;
   description: string;
   html_description: string;
-  picture: string;
+  image: string;
 }
 
 @Table({ tableName: 'categories' })
@@ -68,5 +69,6 @@ export class Category extends Model<Category, CategoryCreationAtrr> {
   })
   image: string;
 
-  //   tools:
+  @HasMany(() => Tool, 'categoryId')
+  tools: Tool[];
 }
