@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { Public } from 'src/decorators/Public';
 
 @Controller('category')
 export class CategoryController {
@@ -19,11 +20,13 @@ export class CategoryController {
     return this.categoryService.createCategory(categoryDto);
   }
 
+  @Public()
   @Get()
   getAll() {
     return this.categoryService.getAllCategories();
   }
 
+  @Public()
   @Get(':id')
   getOneById(@Param('id') id: number) {
     return this.categoryService.getOneCategoryById(id);

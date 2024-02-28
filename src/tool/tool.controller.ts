@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { ToolService } from './tool.service';
 import { CreateToolDto } from './dto/create-tool.dto';
+import { Public } from 'src/decorators/Public';
 
 @Controller('tool')
 export class ToolController {
@@ -19,11 +20,13 @@ export class ToolController {
     return this.toolService.createTool(createToolDto);
   }
 
+  @Public()
   @Get()
   getAll() {
     return this.toolService.getAllTools();
   }
 
+  @Public()
   @Get(':id')
   getOne(@Param('id') id: number) {
     return this.toolService.getOneToolById(id);
