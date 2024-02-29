@@ -7,7 +7,6 @@ import { ToolModule } from './tool/tool.module';
 import { Tool } from './tool/tool.model';
 import { User } from './user/user.model';
 import { AuthModule } from './auth/auth.module';
-import { UserService } from './user/user.service';
 import { UserModule } from './user/user.module';
 
 @Module({

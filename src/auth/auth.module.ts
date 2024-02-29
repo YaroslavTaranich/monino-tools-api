@@ -6,19 +6,23 @@ import { AuthService } from './auth.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { User } from '../user/user.model';
 import { AuthController } from './auth.controller';
-import { jwtConstants } from 'src/.secret/jwt';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth.guard';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      envFilePath: `.${process.env.NODE_ENV}.env`,
+    }),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       global: true,
-      secret: jwtConstants.secret, // здесь должен быть ваш секретный ключ для подписи токена
+      secret: process.env.JWT_SECRET,
       signOptions: { expiresIn: '1d' }, // время жизни токена
     }),
     SequelizeModule.forFeature([User]),
+    ConfigModule,
   ],
   providers: [
     AuthService,
