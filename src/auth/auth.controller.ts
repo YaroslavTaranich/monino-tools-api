@@ -14,6 +14,7 @@ import { AuthGuard } from './auth.guard';
 import { CreateUserDto } from '../user/dto/create-user.dto';
 import { UserService } from 'src/user/user.service';
 import { USER_ROLE } from 'src/user/user.model';
+import { Public } from 'src/decorators/Public';
 
 @Controller('auth')
 export class AuthController {
@@ -34,6 +35,7 @@ export class AuthController {
     return this.authService.login(name, password);
   }
 
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('admin')
   async admin(@Body() body: { name: string; password: string }) {

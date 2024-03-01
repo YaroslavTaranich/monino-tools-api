@@ -11,7 +11,7 @@ import { ToolService } from './tool.service';
 import { CreateToolDto } from './dto/create-tool.dto';
 import { Public } from 'src/decorators/Public';
 
-@Controller('tool')
+@Controller('tools')
 export class ToolController {
   constructor(private toolService: ToolService) {}
 
