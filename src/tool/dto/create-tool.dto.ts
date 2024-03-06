@@ -43,5 +43,7 @@ export class CreateToolDto {
 
   readonly popular;
 
+  readonly tool_type;
+
   readonly categoryId;
 }

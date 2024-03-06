@@ -30,6 +30,17 @@ export class ToolService {
     }
   }
 
+  async getAllToolsByCategoryId(categoryId: number) {
+    try {
+      const tools = await this.toolRepository.findAll({
+        where: { categoryId },
+      });
+      return tools;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
   async getOneToolById(id: number) {
     const tool = await this.toolRepository.findOne({ where: { id } });
     if (!tool) {
@@ -42,6 +53,8 @@ export class ToolService {
     const tool = await this.getOneToolById(id);
 
     const updateDto = Object.assign(new CreateToolDto(), newData);
+
+    console.log(updateDto, tool);
 
     const errors = await validate(updateDto);
     if (errors.length > 0) {

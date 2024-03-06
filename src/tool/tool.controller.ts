@@ -6,6 +6,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
 } from '@nestjs/common';
 import { ToolService } from './tool.service';
 import { CreateToolDto } from './dto/create-tool.dto';
@@ -22,7 +23,10 @@ export class ToolController {
 
   @Public()
   @Get()
-  getAll() {
+  getAll(@Query() query: { categoryId: number }) {
+    if (!!query.categoryId) {
+      return this.toolService.getAllToolsByCategoryId(query.categoryId);
+    }
     return this.toolService.getAllTools();
   }
 

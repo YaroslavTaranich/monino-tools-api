@@ -27,6 +27,14 @@ export class CategoryService {
     return categories;
   }
 
+  async getAllCategoriesNames() {
+    const categories = await this.categoryRepository.findAll({
+      attributes: ['id', 'label'],
+    });
+
+    return categories;
+  }
+
   async getOneCategoryById(id: number) {
     const category = await this.categoryRepository.findOne({ where: { id } });
     if (!category) {

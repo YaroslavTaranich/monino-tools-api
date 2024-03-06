@@ -20,7 +20,7 @@ interface ToolCreationAtrr {
   price: number;
   zalog: number;
   tool_type: string;
-  pobular: boolean;
+  popular: boolean;
   categoryId: number;
 }
 

@@ -27,6 +27,12 @@ export class CategoryController {
   }
 
   @Public()
+  @Get('names')
+  getAllNames() {
+    return this.categoryService.getAllCategoriesNames();
+  }
+
+  @Public()
   @Get(':id')
   getOneById(@Param('id') id: number) {
     return this.categoryService.getOneCategoryById(id);
