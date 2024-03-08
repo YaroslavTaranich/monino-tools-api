@@ -8,6 +8,7 @@ import { Tool } from './tool/tool.model';
 import { User } from './user/user.model';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { FileModule } from './file/file.module';
 
 @Module({
   controllers: [],
@@ -32,6 +33,7 @@ import { UserModule } from './user/user.module';
     AuthModule,
     UserModule,
     AuthModule,
+    FileModule,
   ],
 })
 export class AppModule {}

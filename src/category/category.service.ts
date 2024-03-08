@@ -1,38 +1,37 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { Category } from './category.model';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { validate } from 'class-validator';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class CategoryService {
   constructor(
     @InjectModel(Category) private categoryRepository: typeof Category,
+    private readonly fileService: FileService,
   ) {}
+
   async createCategory(dto: CreateCategoryDto) {
     try {
-      const category = await this.categoryRepository.create(dto);
-      return category;
+      return await this.categoryRepository.create(dto);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
   }
 
   async getAllCategories() {
-    const categories = await this.categoryRepository.findAll();
-    return categories;
+    return await this.categoryRepository.findAll();
   }
 
   async getAllCategoriesNames() {
-    const categories = await this.categoryRepository.findAll({
+    return await this.categoryRepository.findAll({
       attributes: ['id', 'label'],
     });
-
-    return categories;
   }
 
   async getOneCategoryById(id: number) {
@@ -43,7 +42,7 @@ export class CategoryService {
     return category;
   }
 
-  async updateCategoryById(id: number, newData: CreateCategoryDto) {
+  async updateCategoryById(id: number, newData: Partial<CreateCategoryDto>) {
     const category = await this.getOneCategoryById(id);
 
     const updateDto = Object.assign(new CreateCategoryDto(), newData);
@@ -64,5 +63,23 @@ export class CategoryService {
   async deleteCategoryById(id: number) {
     await this.categoryRepository.destroy({ where: { id } });
     return 'Удалено';
+  }
+
+  async updateCategoryImage(id: number, file: Express.Multer.File) {
+    const category = await this.getOneCategoryById(id);
+    const path = await this.fileService.changeImage(file, category.image);
+    console.log('updating image in category');
+    category.image = path || null;
+    await category.save();
+    return category;
+  }
+
+  async deleteCategoryImage(id: number) {
+    const category = await this.getOneCategoryById(id);
+    this.fileService.removeFile(category.image);
+    console.log('deleting image in category');
+    category.image = null;
+    await category.save();
+    return category;
   }
 }

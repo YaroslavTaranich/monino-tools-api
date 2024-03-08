@@ -28,6 +28,7 @@ export class AuthController {
     return this.authService.register(userData);
   }
 
+  @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(@Body() body: { name: string; password: string }) {

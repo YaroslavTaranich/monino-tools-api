@@ -1,19 +1,24 @@
 import {
-  Controller,
-  Post,
-  Get,
   Body,
-  Put,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  Post,
+  Put,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { Public } from 'src/decorators/Public';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { FileType } from '../file/file.service';
+import { imageParseFilePipe } from '../file/file.controller';
 
 @Controller('category')
 export class CategoryController {
-  constructor(private categoryService: CategoryService) {}
+  constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
   create(@Body() categoryDto: CreateCategoryDto) {
@@ -46,5 +51,20 @@ export class CategoryController {
   @Delete(':id')
   deleteOneById(@Param('id') id: number) {
     return this.categoryService.deleteCategoryById(id);
+  }
+
+  @Post(':id/image')
+  @UseInterceptors(FileInterceptor(FileType.IMAGE))
+  async updateImageById(
+    @UploadedFile(imageParseFilePipe)
+    file: Express.Multer.File,
+    @Param('id') id: number,
+  ) {
+    return this.categoryService.updateCategoryImage(id, file);
+  }
+
+  @Delete(':id/image')
+  async deleteImage(@Param('id') id: number) {
+    return this.categoryService.deleteCategoryImage(id);
   }
 }
