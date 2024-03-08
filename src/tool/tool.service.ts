@@ -7,15 +7,18 @@ import { InjectModel } from '@nestjs/sequelize';
 import { Tool } from './tool.model';
 import { CreateToolDto } from './dto/create-tool.dto';
 import { validate } from 'class-validator';
+import { FileService } from '../file/file.service';
 
 @Injectable()
 export class ToolService {
-  constructor(@InjectModel(Tool) private toolRepository: typeof Tool) {}
+  constructor(
+    @InjectModel(Tool) private toolRepository: typeof Tool,
+    private readonly fileService: FileService,
+  ) {}
 
   async createTool(dto: CreateToolDto) {
     try {
-      const ToolCreationAtrr = await this.toolRepository.create(dto);
-      return ToolCreationAtrr;
+      return await this.toolRepository.create(dto);
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -23,8 +26,7 @@ export class ToolService {
 
   async getAllTools() {
     try {
-      const tools = await this.toolRepository.findAll();
-      return tools;
+      return await this.toolRepository.findAll();
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -32,10 +34,9 @@ export class ToolService {
 
   async getAllToolsByCategoryId(categoryId: number) {
     try {
-      const tools = await this.toolRepository.findAll({
+      return await this.toolRepository.findAll({
         where: { categoryId },
       });
-      return tools;
     } catch (error) {
       throw new BadRequestException(error.message);
     }
@@ -49,7 +50,7 @@ export class ToolService {
     return tool;
   }
 
-  async updatetoolById(id: number, newData: CreateToolDto) {
+  async updateToolById(id: number, newData: CreateToolDto) {
     const tool = await this.getOneToolById(id);
 
     const updateDto = Object.assign(new CreateToolDto(), newData);
@@ -72,5 +73,14 @@ export class ToolService {
   async deleteToolById(id: number) {
     await this.toolRepository.destroy({ where: { id } });
     return 'Удалено';
+  }
+
+  async updateToolImage(id: number, file: Express.Multer.File) {
+    const tool = await this.getOneToolById(id);
+    const path = await this.fileService.changeImage(file, tool.image);
+    console.log('updating image in tool');
+    tool.image = path || null;
+    await tool.save();
+    return tool;
   }
 }

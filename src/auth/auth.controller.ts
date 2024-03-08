@@ -1,13 +1,13 @@
 import {
-  Controller,
-  Post,
   Body,
-  Request,
-  UseGuards,
+  Controller,
   Get,
   HttpCode,
   HttpStatus,
   NotFoundException,
+  Post,
+  Request,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from './auth.guard';
@@ -51,7 +51,6 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Get('profile')
   async getProfile(@Request() req) {
-    const user = await this.userService.getUserByUsername(req.user.username);
-    return user;
+    return await this.userService.getUserByUsername(req.user.username);
   }
 }
