@@ -6,6 +6,7 @@ import {
   HttpStatus,
   NotFoundException,
   Post,
+  Put,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +16,12 @@ import { CreateUserDto } from '../user/dto/create-user.dto';
 import { UserService } from 'src/user/user.service';
 import { USER_ROLE } from 'src/user/user.model';
 import { Public } from 'src/decorators/Public';
+
+interface IChangePassword {
+  name: string;
+  oldPassword: string;
+  newPassword: string;
+}
 
 @Controller('auth')
 export class AuthController {
@@ -52,5 +59,16 @@ export class AuthController {
   @Get('profile')
   async getProfile(@Request() req) {
     return await this.userService.getUserByUsername(req.user.username);
+  }
+
+  @Put('password')
+  async changePassword(
+    @Body() { oldPassword, newPassword, name }: IChangePassword,
+  ) {
+    return await this.authService.changePassword(
+      oldPassword,
+      newPassword,
+      name,
+    );
   }
 }

@@ -20,7 +20,7 @@ export class FileService {
     try {
       const fileExtension = file.originalname.split('.').pop();
       const fileName = uuid.v4() + '.' + fileExtension;
-      const filePath = path.resolve(__dirname, '..', 'static', type);
+      const filePath = path.resolve(__dirname, '..', '..', 'static', type);
       if (!fs.existsSync(filePath)) {
         fs.mkdirSync(filePath, { recursive: true });
       }
@@ -47,7 +47,7 @@ export class FileService {
   }
 
   showFileByPath(filePath: string) {
-    const fullPath = path.resolve(__dirname, '..', 'static', filePath);
+    const fullPath = path.resolve(__dirname, '..', '..', 'static', filePath);
     if (!fs.existsSync(fullPath)) {
       throw new HttpException('Файла не существует', HttpStatus.NOT_FOUND);
     }
@@ -60,7 +60,7 @@ export class FileService {
   }
 
   showAllFiles(type: FileType) {
-    const filesPath = path.resolve(__dirname, '..', 'static', type);
+    const filesPath = path.resolve(__dirname, '..', '..', 'static', type);
     const fileNames = fs.readdirSync(filesPath);
 
     return { fileNames };

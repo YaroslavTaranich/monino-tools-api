@@ -58,6 +58,16 @@ export class AuthService {
     return null;
   }
 
+  async changePassword(oldPassword: string, newPassword: string, name: string) {
+    const user = await this.validateUser(name, oldPassword);
+    if (!user) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    return user;
+  }
+
   private async comparePasswords(password: string, hashedPassword: string) {
     const match = await bcrypt.compare(password, hashedPassword);
     console.log('bycript match: ', match);
