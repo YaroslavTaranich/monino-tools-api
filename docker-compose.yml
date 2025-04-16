@@ -10,7 +10,7 @@ services:
     volumes:
       - .:/app
       - /app/node_modules
-      - /app/static
+      - static_data:/app/static
     ports:
       - 5000:5000
       - 9229:9229
@@ -59,3 +59,4 @@ networks:
 
 volumes:
   pgdata:
+  static_data:
