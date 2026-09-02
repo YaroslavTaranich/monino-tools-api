@@ -9,6 +9,7 @@ import { User } from './user/user.model';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { FileModule } from './file/file.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   controllers: [],
@@ -27,6 +28,7 @@ import { FileModule } from './file/file.module';
       database: process.env.POSTGRES_DB,
       models: [Category, Tool, User],
       autoLoadModels: true,
+      synchronize: false,
     }),
     CategoryModule,
     ToolModule,
@@ -34,6 +36,7 @@ import { FileModule } from './file/file.module';
     UserModule,
     AuthModule,
     FileModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
