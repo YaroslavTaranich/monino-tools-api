@@ -28,7 +28,7 @@ export const toolTypesExpand: Migration = {
         )
         SELECT
           CASE
-            WHEN regexp_replace(lower("tool_type"), '[^a-z0-9]+', '-', 'g') <> ''
+            WHEN trim(both '-' from regexp_replace(lower("tool_type"), '[^a-z0-9]+', '-', 'g')) <> ''
               THEN trim(both '-' from regexp_replace(lower("tool_type"), '[^a-z0-9]+', '-', 'g'))
                    || '-' || substr(md5("tool_type"), 1, 8)
             ELSE 'type-' || substr(md5("tool_type"), 1, 12)

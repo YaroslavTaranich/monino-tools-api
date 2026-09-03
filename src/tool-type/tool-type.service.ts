@@ -5,10 +5,43 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
+import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { Sequelize } from 'sequelize-typescript';
 import { Tool } from '../tool/tool.model';
 import { SaveToolTypeDto } from './dto/save-tool-type.dto';
 import { ToolType } from './tool-type.model';
+
+const getSaveError = (error: unknown) => {
+  const databaseError = error as {
+    name?: string;
+    errors?: Array<{ path?: string }>;
+  };
+  const isDuplicate =
+    error instanceof UniqueConstraintError ||
+    databaseError?.name === 'SequelizeUniqueConstraintError';
+
+  if (isDuplicate) {
+    const fields = databaseError.errors?.map(({ path }) => path) ?? [];
+    if (fields.includes('name')) {
+      return new ConflictException('Тип с таким названием уже существует');
+    }
+    if (fields.includes('slug')) {
+      return new ConflictException(
+        'Тип с таким системным кодом уже существует',
+      );
+    }
+    return new ConflictException('Такой тип инструмента уже существует');
+  }
+
+  if (
+    error instanceof ValidationError ||
+    databaseError?.name === 'SequelizeValidationError'
+  ) {
+    return new BadRequestException('Проверьте правильность заполнения полей');
+  }
+
+  return new BadRequestException('Не удалось сохранить тип инструмента');
+};
 
 @Injectable()
 export class ToolTypeService {
@@ -39,7 +72,7 @@ export class ToolTypeService {
     try {
       return await this.toolTypeRepository.create(dto);
     } catch (error) {
-      throw new BadRequestException(error.message);
+      throw getSaveError(error);
     }
   }
 
@@ -62,7 +95,7 @@ export class ToolTypeService {
       });
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
-      throw new BadRequestException(error.message);
+      throw getSaveError(error);
     }
   }
 

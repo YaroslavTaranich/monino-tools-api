@@ -13,6 +13,7 @@ describe('ToolTypeService', () => {
   };
   const toolTypeRepository = {
     findByPk: jest.fn(),
+    create: jest.fn(),
   };
   const toolRepository = {
     update: jest.fn(),
@@ -52,5 +53,36 @@ describe('ToolTypeService', () => {
 
     await expect(service.delete(5)).rejects.toBeInstanceOf(ConflictException);
     expect(toolType.destroy).not.toHaveBeenCalled();
+  });
+
+  it('returns a Russian error for a duplicate name', async () => {
+    toolTypeRepository.create.mockRejectedValue({
+      name: 'SequelizeUniqueConstraintError',
+      errors: [{ path: 'name' }],
+    });
+
+    await expect(
+      service.create({
+        name: 'Дубликат',
+        slug: 'duplicate',
+        sort_order: 1,
+        is_active: true,
+      }),
+    ).rejects.toThrow('Тип с таким названием уже существует');
+  });
+
+  it('does not expose an unexpected database error', async () => {
+    toolTypeRepository.create.mockRejectedValue(
+      new Error('duplicate key value violates unique constraint'),
+    );
+
+    await expect(
+      service.create({
+        name: 'Новый тип',
+        slug: 'new-type',
+        sort_order: 1,
+        is_active: true,
+      }),
+    ).rejects.toThrow('Не удалось сохранить тип инструмента');
   });
 });
