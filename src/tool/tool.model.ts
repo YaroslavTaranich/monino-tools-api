@@ -6,7 +6,8 @@ import {
   ForeignKey,
   Table,
 } from 'sequelize-typescript';
-import { Category } from 'src/category/category.model';
+import { Category } from '../category/category.model';
+import { ToolType } from '../tool-type/tool-type.model';
 
 interface ToolCreationAtrr {
   name: string;
@@ -20,6 +21,7 @@ interface ToolCreationAtrr {
   price: number;
   zalog: number;
   tool_type: string;
+  tool_type_id?: number;
   popular: boolean;
   categoryId: number;
 }
@@ -109,6 +111,16 @@ export class Tool extends Model<Tool, ToolCreationAtrr> {
     allowNull: false,
   })
   tool_type: string;
+
+  @ForeignKey(() => ToolType)
+  @Column({
+    type: DataType.INTEGER,
+    allowNull: true,
+  })
+  tool_type_id: number | null;
+
+  @BelongsTo(() => ToolType)
+  toolType: ToolType;
 
   @Column({
     type: DataType.BOOLEAN,

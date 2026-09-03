@@ -9,6 +9,8 @@ import { User } from './user/user.model';
 import { AuthModule } from './auth/auth.module';
 import { FileModule } from './file/file.module';
 import { HealthModule } from './health/health.module';
+import { ToolType } from './tool-type/tool-type.model';
+import { ToolTypeModule } from './tool-type/tool-type.module';
 
 @Module({
   controllers: [],
@@ -25,12 +27,13 @@ import { HealthModule } from './health/health.module';
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
-      models: [Category, Tool, User],
+      models: [Category, Tool, ToolType, User],
       autoLoadModels: true,
       synchronize: false,
     }),
     CategoryModule,
     ToolModule,
+    ToolTypeModule,
     AuthModule,
     FileModule,
     HealthModule,

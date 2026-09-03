@@ -1,0 +1,82 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectModel } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
+import { Tool } from '../tool/tool.model';
+import { SaveToolTypeDto } from './dto/save-tool-type.dto';
+import { ToolType } from './tool-type.model';
+
+@Injectable()
+export class ToolTypeService {
+  constructor(
+    @InjectModel(ToolType) private toolTypeRepository: typeof ToolType,
+    @InjectModel(Tool) private toolRepository: typeof Tool,
+    private sequelize: Sequelize,
+  ) {}
+
+  async getAll() {
+    return this.toolTypeRepository.findAll({
+      order: [
+        ['sort_order', 'ASC'],
+        ['name', 'ASC'],
+      ],
+    });
+  }
+
+  async getOne(id: number) {
+    const toolType = await this.toolTypeRepository.findByPk(id);
+    if (!toolType) {
+      throw new NotFoundException(`Тип инструмента с ID ${id} не найден`);
+    }
+    return toolType;
+  }
+
+  async create(dto: SaveToolTypeDto) {
+    try {
+      return await this.toolTypeRepository.create(dto);
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  async update(id: number, dto: SaveToolTypeDto) {
+    try {
+      return await this.sequelize.transaction(async (transaction) => {
+        const toolType = await this.toolTypeRepository.findByPk(id, {
+          transaction,
+        });
+        if (!toolType) {
+          throw new NotFoundException(`Тип инструмента с ID ${id} не найден`);
+        }
+
+        await toolType.update(dto, { transaction });
+        await this.toolRepository.update(
+          { tool_type: toolType.name },
+          { where: { tool_type_id: id }, transaction },
+        );
+        return toolType;
+      });
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new BadRequestException(error.message);
+    }
+  }
+
+  async delete(id: number) {
+    const toolType = await this.getOne(id);
+    const toolsCount = await this.toolRepository.count({
+      where: { tool_type_id: id },
+    });
+    if (toolsCount > 0) {
+      throw new ConflictException(
+        `Нельзя удалить тип: он назначен инструментам (${toolsCount})`,
+      );
+    }
+    await toolType.destroy();
+    return { deleted: true };
+  }
+}

@@ -1,5 +1,5 @@
 import { Column, DataType, HasMany, Model, Table } from 'sequelize-typescript';
-import { Tool } from 'src/tool/tool.model';
+import { Tool } from '../tool/tool.model';
 
 interface CategoryCreationAtrr {
   name: string;

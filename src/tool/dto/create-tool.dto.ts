@@ -1,4 +1,4 @@
-import { Length } from 'class-validator';
+import { Allow, IsInt, IsOptional, IsString, Length } from 'class-validator';
 
 export class CreateToolDto {
   @Length(4, 50, { message: 'Label должен быть от 4 до 50 символов' })
@@ -35,15 +35,26 @@ export class CreateToolDto {
   })
   readonly html_description;
 
+  @Allow()
   readonly image;
 
+  @Allow()
   readonly price;
 
+  @Allow()
   readonly zalog;
 
+  @Allow()
   readonly popular;
 
-  readonly tool_type;
+  @IsOptional()
+  @IsString()
+  readonly tool_type?: string;
 
+  @IsOptional()
+  @IsInt()
+  readonly tool_type_id?: number;
+
+  @Allow()
   readonly categoryId;
 }
