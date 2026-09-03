@@ -9,7 +9,6 @@ import { CreateToolDto } from './dto/create-tool.dto';
 import { validate } from 'class-validator';
 import { FileService } from '../file/file.service';
 import { ToolType } from '../tool-type/tool-type.model';
-import { createHash } from 'crypto';
 
 @Injectable()
 export class ToolService {
@@ -93,40 +92,16 @@ export class ToolService {
   }
 
   private async resolveToolType(dto: CreateToolDto) {
-    if (dto.tool_type_id) {
-      const toolType = await this.toolTypeRepository.findByPk(dto.tool_type_id);
-      if (!toolType) {
-        throw new BadRequestException(
-          `Тип инструмента с ID ${dto.tool_type_id} не найден`,
-        );
-      }
-      return { tool_type_id: toolType.id, tool_type: toolType.name };
-    }
-
-    const legacyName = dto.tool_type?.trim();
-    if (!legacyName) {
+    if (!dto.tool_type_id) {
       throw new BadRequestException('Необходимо выбрать тип инструмента');
     }
 
-    let toolType = await this.toolTypeRepository.findOne({
-      where: { name: legacyName },
-    });
+    const toolType = await this.toolTypeRepository.findByPk(dto.tool_type_id);
     if (!toolType) {
-      const asciiSlug = legacyName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '');
-      const suffix = createHash('sha256')
-        .update(legacyName)
-        .digest('hex')
-        .slice(0, 8);
-      toolType = await this.toolTypeRepository.create({
-        name: legacyName,
-        slug: `${asciiSlug || 'type'}-${suffix}`,
-        sort_order: 0,
-        is_active: true,
-      });
+      throw new BadRequestException(
+        `Тип инструмента с ID ${dto.tool_type_id} не найден`,
+      );
     }
-    return { tool_type_id: toolType.id, tool_type: toolType.name };
+    return { tool_type_id: toolType.id };
   }
 }

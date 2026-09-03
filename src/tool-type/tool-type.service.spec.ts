@@ -15,17 +15,10 @@ describe('ToolTypeService', () => {
     findByPk: jest.fn(),
     create: jest.fn(),
   };
-  const toolRepository = {
-    update: jest.fn(),
-    count: jest.fn(),
-  };
-  const sequelize = {
-    transaction: jest.fn(async (callback) => callback({ id: 'transaction' })),
-  };
+  const toolRepository = { count: jest.fn() };
   const service = new ToolTypeService(
     toolTypeRepository as never,
     toolRepository as never,
-    sequelize as never,
   );
 
   beforeEach(() => {
@@ -34,18 +27,18 @@ describe('ToolTypeService', () => {
     toolTypeRepository.findByPk.mockResolvedValue(toolType);
   });
 
-  it('updates the legacy string on linked tools when a type is renamed', async () => {
-    await service.update(5, {
+  it('updates a type without changing linked tools', async () => {
+    const result = await service.update(5, {
       name: 'Новое имя',
       slug: 'novoe-imya',
       sort_order: 1,
       is_active: true,
     });
 
-    expect(toolRepository.update).toHaveBeenCalledWith(
-      { tool_type: 'Новое имя' },
-      expect.objectContaining({ where: { tool_type_id: 5 } }),
+    expect(toolType.update).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'Новое имя' }),
     );
+    expect(result.name).toBe('Новое имя');
   });
 
   it('does not delete a type used by tools', async () => {

@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
-import { Sequelize } from 'sequelize-typescript';
 import { Tool } from '../tool/tool.model';
 import { SaveToolTypeDto } from './dto/save-tool-type.dto';
 import { ToolType } from './tool-type.model';
@@ -48,7 +47,6 @@ export class ToolTypeService {
   constructor(
     @InjectModel(ToolType) private toolTypeRepository: typeof ToolType,
     @InjectModel(Tool) private toolRepository: typeof Tool,
-    private sequelize: Sequelize,
   ) {}
 
   async getAll() {
@@ -78,21 +76,13 @@ export class ToolTypeService {
 
   async update(id: number, dto: SaveToolTypeDto) {
     try {
-      return await this.sequelize.transaction(async (transaction) => {
-        const toolType = await this.toolTypeRepository.findByPk(id, {
-          transaction,
-        });
-        if (!toolType) {
-          throw new NotFoundException(`Тип инструмента с ID ${id} не найден`);
-        }
+      const toolType = await this.toolTypeRepository.findByPk(id);
+      if (!toolType) {
+        throw new NotFoundException(`Тип инструмента с ID ${id} не найден`);
+      }
 
-        await toolType.update(dto, { transaction });
-        await this.toolRepository.update(
-          { tool_type: toolType.name },
-          { where: { tool_type_id: id }, transaction },
-        );
-        return toolType;
-      });
+      await toolType.update(dto);
+      return toolType;
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw getSaveError(error);

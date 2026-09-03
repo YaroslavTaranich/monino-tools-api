@@ -1,4 +1,4 @@
-import { Allow, IsInt, IsOptional, IsString, Length } from 'class-validator';
+import { Allow, IsInt, Length, Min } from 'class-validator';
 
 export class CreateToolDto {
   @Length(4, 50, { message: 'Label должен быть от 4 до 50 символов' })
@@ -47,13 +47,9 @@ export class CreateToolDto {
   @Allow()
   readonly popular;
 
-  @IsOptional()
-  @IsString()
-  readonly tool_type?: string;
-
-  @IsOptional()
-  @IsInt()
-  readonly tool_type_id?: number;
+  @IsInt({ message: 'Необходимо выбрать тип инструмента' })
+  @Min(1, { message: 'Необходимо выбрать тип инструмента' })
+  readonly tool_type_id: number;
 
   @Allow()
   readonly categoryId;

@@ -1,7 +1,7 @@
 import { BadRequestException } from '@nestjs/common';
 import { ToolService } from './tool.service';
 
-describe('ToolService type compatibility', () => {
+describe('ToolService tool types', () => {
   const toolRepository = {
     create: jest.fn(),
     findOne: jest.fn(),
@@ -9,8 +9,6 @@ describe('ToolService type compatibility', () => {
   };
   const toolTypeRepository = {
     findByPk: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
   };
   const fileService = {};
   const service = new ToolService(
@@ -21,42 +19,34 @@ describe('ToolService type compatibility', () => {
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('uses tool_type_id as the source of truth and preserves the legacy field', async () => {
+  it('uses tool_type_id as the only type field', async () => {
     toolTypeRepository.findByPk.mockResolvedValue({ id: 7, name: 'Дрели' });
     toolRepository.create.mockResolvedValue({ id: 42 });
     toolRepository.findOne.mockResolvedValue({
       id: 42,
       tool_type_id: 7,
-      tool_type: 'Дрели',
       toolType: { id: 7, name: 'Дрели' },
     });
 
     const result = await service.createTool({ tool_type_id: 7 } as never);
 
-    expect(toolRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tool_type_id: 7, tool_type: 'Дрели' }),
-    );
-    expect(result.tool_type).toBe('Дрели');
+    const createPayload = toolRepository.create.mock.calls[0][0];
+    expect(createPayload).toEqual(expect.objectContaining({ tool_type_id: 7 }));
+    expect(createPayload).not.toHaveProperty('tool_type');
+    expect(result.tool_type_id).toBe(7);
   });
 
-  it('maps a legacy string to an existing type', async () => {
-    toolTypeRepository.findOne.mockResolvedValue({ id: 3, name: 'Пилы' });
-    toolRepository.create.mockResolvedValue({ id: 11 });
-    toolRepository.findOne.mockResolvedValue({ id: 11 });
-
-    await service.createTool({ tool_type: ' Пилы ' } as never);
-
-    expect(toolTypeRepository.findOne).toHaveBeenCalledWith({
-      where: { name: 'Пилы' },
-    });
-    expect(toolRepository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ tool_type_id: 3, tool_type: 'Пилы' }),
-    );
-  });
-
-  it('rejects a request without either type representation', async () => {
+  it('rejects a request without a type ID', async () => {
     await expect(service.createTool({} as never)).rejects.toBeInstanceOf(
       BadRequestException,
     );
+  });
+
+  it('rejects an unknown type ID', async () => {
+    toolTypeRepository.findByPk.mockResolvedValue(null);
+
+    await expect(
+      service.createTool({ tool_type_id: 999 } as never),
+    ).rejects.toThrow('Тип инструмента с ID 999 не найден');
   });
 });

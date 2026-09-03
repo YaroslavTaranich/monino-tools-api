@@ -20,8 +20,7 @@ interface ToolCreationAtrr {
   image: string;
   price: number;
   zalog: number;
-  tool_type: string;
-  tool_type_id?: number;
+  tool_type_id: number;
   popular: boolean;
   categoryId: number;
 }
@@ -105,19 +104,12 @@ export class Tool extends Model<Tool, ToolCreationAtrr> {
   })
   zalog: number;
 
-  @Column({
-    type: DataType.STRING,
-    unique: false,
-    allowNull: false,
-  })
-  tool_type: string;
-
   @ForeignKey(() => ToolType)
   @Column({
     type: DataType.INTEGER,
-    allowNull: true,
+    allowNull: false,
   })
-  tool_type_id: number | null;
+  tool_type_id: number;
 
   @BelongsTo(() => ToolType)
   toolType: ToolType;
