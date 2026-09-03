@@ -1,29 +1,42 @@
 import { QueryTypes } from 'sequelize';
 import { Migration } from './types';
 
+const primaryAdministratorId = 43;
+
 export const singleAdministrator: Migration = {
   name: '002-single-administrator',
 
   async up({ sequelize, transaction }) {
-    const [{ count }] = await sequelize.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS "count" FROM "user" WHERE "role" = 'admin'`,
-      { type: QueryTypes.SELECT, transaction },
+    const administrators = await sequelize.query<{ id: number }>(
+      `
+        SELECT "id"
+        FROM "user"
+        WHERE "id" = :primaryAdministratorId AND "role" = 'admin'
+      `,
+      {
+        replacements: { primaryAdministratorId },
+        type: QueryTypes.SELECT,
+        transaction,
+      },
     );
-    if (Number(count) !== 1) {
+    if (administrators.length !== 1) {
       throw new Error(
-        `Expected exactly one administrator before migration, found ${count}`,
+        `Expected administrator record ${primaryAdministratorId} before migration, found ${administrators.length}`,
       );
     }
 
     await sequelize.query(
       `
-        DELETE FROM "user" WHERE "role" IS DISTINCT FROM 'admin';
+        DELETE FROM "user" WHERE "id" <> :primaryAdministratorId;
         ALTER TABLE "user" ALTER COLUMN "role" SET NOT NULL;
         ALTER TABLE "user" ALTER COLUMN "password" SET NOT NULL;
         ALTER TABLE "user"
           ADD CONSTRAINT "user_single_admin_role" CHECK ("role" = 'admin');
       `,
-      { transaction },
+      {
+        replacements: { primaryAdministratorId: administrators[0].id },
+        transaction,
+      },
     );
   },
 
