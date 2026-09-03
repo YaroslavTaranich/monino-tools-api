@@ -7,7 +7,6 @@ import { ToolModule } from './tool/tool.module';
 import { Tool } from './tool/tool.model';
 import { User } from './user/user.model';
 import { AuthModule } from './auth/auth.module';
-import { UserModule } from './user/user.module';
 import { FileModule } from './file/file.module';
 import { HealthModule } from './health/health.module';
 
@@ -32,8 +31,6 @@ import { HealthModule } from './health/health.module';
     }),
     CategoryModule,
     ToolModule,
-    AuthModule,
-    UserModule,
     AuthModule,
     FileModule,
     HealthModule,

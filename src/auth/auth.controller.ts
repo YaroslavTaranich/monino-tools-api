@@ -4,71 +4,87 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  NotFoundException,
   Post,
   Put,
   Request,
-  UseGuards,
+  Response,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { AuthGuard } from './auth.guard';
-import { CreateUserDto } from '../user/dto/create-user.dto';
-import { UserService } from 'src/user/user.service';
-import { USER_ROLE } from 'src/user/user.model';
-import { Public } from 'src/decorators/Public';
+import { Public } from '../decorators/Public';
+import {
+  Request as ExpressRequest,
+  Response as ExpressResponse,
+} from 'express';
+import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { LoginRateLimitService } from './login-rate-limit.service';
 
-interface IChangePassword {
-  name: string;
-  oldPassword: string;
-  newPassword: string;
-}
+const sessionCookie = 'admin_session';
+const cookieBaseOptions = {
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict' as const,
+  path: '/',
+};
+const sessionCookieOptions = {
+  ...cookieBaseOptions,
+  maxAge: 8 * 60 * 60 * 1000,
+};
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly userService: UserService,
+    private readonly loginRateLimit: LoginRateLimitService,
   ) {}
-
-  @Post('reg')
-  async register(@Body() userData: CreateUserDto) {
-    return this.authService.register(userData);
-  }
 
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async login(@Body() body: { name: string; password: string }) {
-    const { name, password } = body;
-    return this.authService.login(name, password);
-  }
-
-  @Public()
-  @HttpCode(HttpStatus.OK)
-  @Post('admin')
-  async admin(@Body() body: { name: string; password: string }) {
-    const { name, password } = body;
-    const user = await this.userService.getUserByUsername(name);
-    if (user.role !== USER_ROLE.ADMIN) {
-      throw new NotFoundException('Неверное имя пользователя или пароль');
+  async login(
+    @Body() body: LoginDto,
+    @Request() request: ExpressRequest,
+    @Response({ passthrough: true }) response: ExpressResponse,
+  ) {
+    const rateLimitKey = request.ip;
+    this.loginRateLimit.assertAllowed(rateLimitKey);
+    try {
+      const { token, user } = await this.authService.login(
+        body.name,
+        body.password,
+      );
+      this.loginRateLimit.reset(rateLimitKey);
+      response.cookie(sessionCookie, token, sessionCookieOptions);
+      return { user };
+    } catch (error) {
+      this.loginRateLimit.recordFailure(rateLimitKey);
+      throw error;
     }
-    return this.authService.login(name, password);
   }
 
-  @UseGuards(AuthGuard)
   @Get('profile')
   async getProfile(@Request() req) {
-    return await this.userService.getUserByUsername(req.user.username);
+    return req.user;
   }
 
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @Post('logout')
+  logout(@Response({ passthrough: true }) response: ExpressResponse) {
+    response.clearCookie(sessionCookie, cookieBaseOptions);
+  }
+
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Put('password')
   async changePassword(
-    @Body() { oldPassword, newPassword, name }: IChangePassword,
+    @Body() { oldPassword, newPassword }: ChangePasswordDto,
+    @Request() request,
+    @Response({ passthrough: true }) response: ExpressResponse,
   ) {
-    return await this.authService.changePassword(
+    await this.authService.changePassword(
+      request.user.id,
       oldPassword,
       newPassword,
-      name,
     );
+    response.clearCookie(sessionCookie, cookieBaseOptions);
   }
 }
