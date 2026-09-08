@@ -21,6 +21,7 @@ interface ToolCreationAtrr {
   price: number;
   zalog: number;
   tool_type_id: number;
+  accessory_only?: boolean;
   popular: boolean;
   categoryId: number;
 }
@@ -120,6 +121,9 @@ export class Tool extends Model<Tool, ToolCreationAtrr> {
     allowNull: true,
   })
   popular: boolean;
+
+  @Column({ type: DataType.BOOLEAN, allowNull: false, defaultValue: false })
+  accessory_only: boolean;
 
   @ForeignKey(() => Category)
   @Column

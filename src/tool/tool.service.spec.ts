@@ -3,6 +3,10 @@ import { ToolService } from './tool.service';
 
 describe('ToolService tool types', () => {
   const toolRepository = {
+    sequelize: {
+      transaction: jest.fn(async (callback) => callback({})),
+      query: jest.fn().mockResolvedValue([]),
+    },
     create: jest.fn(),
     findOne: jest.fn(),
     findAll: jest.fn(),
@@ -24,6 +28,7 @@ describe('ToolService tool types', () => {
     toolRepository.create.mockResolvedValue({ id: 42 });
     toolRepository.findOne.mockResolvedValue({
       id: 42,
+      setDataValue: jest.fn(),
       tool_type_id: 7,
       toolType: { id: 7, name: 'Дрели' },
     });
