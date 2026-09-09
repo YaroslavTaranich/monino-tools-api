@@ -10,12 +10,14 @@ import { validate } from 'class-validator';
 import { FileService } from '../file/file.service';
 import { QueryTypes, Transaction } from 'sequelize';
 import { ToolType } from '../tool-type/tool-type.model';
+import { ToolImage } from './tool-image.model';
 
 @Injectable()
 export class ToolService {
   constructor(
     @InjectModel(Tool) private toolRepository: typeof Tool,
     @InjectModel(ToolType) private toolTypeRepository: typeof ToolType,
+    @InjectModel(ToolImage) private toolImageRepository: typeof ToolImage,
     private readonly fileService: FileService,
   ) {}
 
@@ -23,6 +25,7 @@ export class ToolService {
     try {
       const typeFields = await this.resolveToolType(dto);
       const { related_tool_ids, ...fields } = dto;
+      delete fields.image;
       const id = await this.toolRepository.sequelize.transaction(
         async (transaction) => {
           await this.lockRelations(transaction);
@@ -42,7 +45,7 @@ export class ToolService {
 
   async getAllTools() {
     try {
-      return this.withRelations(
+      return this.withCatalogData(
         await this.toolRepository.findAll({ include: [ToolType] }),
       );
     } catch (error) {
@@ -52,7 +55,7 @@ export class ToolService {
 
   async getAllToolsByCategoryId(categoryId: number) {
     try {
-      return this.withRelations(
+      return this.withCatalogData(
         await this.toolRepository.findAll({
           where: { categoryId },
           include: [ToolType],
@@ -71,7 +74,7 @@ export class ToolService {
     if (!tool) {
       throw new NotFoundException(`Инструмент с ID ${id} не найден`);
     }
-    await this.withRelations([tool]);
+    await this.withCatalogData([tool]);
     return tool;
   }
 
@@ -88,11 +91,18 @@ export class ToolService {
 
     const typeFields = await this.resolveToolType(newData);
     const { related_tool_ids, ...fields } = newData;
+    delete fields.image;
     await this.toolRepository.sequelize.transaction(async (transaction) => {
       await this.lockRelations(transaction);
       const tool = await this.toolRepository.findByPk(id, { transaction });
       if (!tool) throw new NotFoundException(`Инструмент с ID ${id} не найден`);
       await tool.update({ ...fields, ...typeFields }, { transaction });
+      if (fields.label) {
+        await this.toolImageRepository.update(
+          { alt: fields.label },
+          { where: { tool_id: id }, transaction },
+        );
+      }
       const ids =
         related_tool_ids ?? (await this.relatedIds(tool.id, transaction));
       await this.saveRelations(tool, ids, transaction);
@@ -102,20 +112,256 @@ export class ToolService {
   }
 
   async deleteToolById(id: number) {
+    const images = await this.toolImageRepository.findAll({
+      where: { tool_id: id },
+    });
     await this.toolRepository.sequelize.transaction(async (transaction) => {
       await this.lockRelations(transaction);
       await this.toolRepository.destroy({ where: { id }, transaction });
     });
+    for (const image of images) {
+      await this.removeImageIfUnused(image.storage_key);
+    }
     return 'Удалено';
   }
 
   async updateToolImage(id: number, file: Express.Multer.File) {
-    const tool = await this.getOneToolById(id);
-    const path = await this.fileService.changeImage(file, tool.image);
-    console.log('updating image in tool');
-    tool.image = path || null;
-    await tool.save();
+    await this.getOneToolById(id);
+    const stored = await this.fileService.storeImage(file);
+    let oldPath: string;
+    try {
+      await this.toolRepository.sequelize.transaction(async (transaction) => {
+        const tool = await this.lockTool(id, transaction);
+        const cover = await this.toolImageRepository.findOne({
+          where: { tool_id: id, is_cover: true },
+          transaction,
+        });
+        oldPath = cover?.storage_key ?? tool.image;
+        if (cover) {
+          await cover.update(
+            {
+              ...stored,
+              alt: tool.label,
+            },
+            { transaction },
+          );
+        } else {
+          const imageCount = await this.toolImageRepository.count({
+            where: { tool_id: id },
+            transaction,
+          });
+          if (imageCount >= 5) {
+            throw new BadRequestException(
+              'У инструмента уже загружено пять фотографий',
+            );
+          }
+          await this.toolImageRepository.create(
+            {
+              tool_id: id,
+              ...stored,
+              sort_order: 0,
+              is_cover: true,
+              alt: tool.label,
+            },
+            { transaction },
+          );
+        }
+        await tool.update({ image: stored.storage_key }, { transaction });
+      });
+    } catch (error) {
+      this.fileService.removeFile(stored.storage_key);
+      throw error;
+    }
+    if (oldPath && oldPath !== stored.storage_key) {
+      await this.removeImageIfUnused(oldPath);
+    }
+    return this.getOneToolById(id);
+  }
+
+  async uploadToolImages(id: number, files: Express.Multer.File[]) {
+    if (!files.length) {
+      throw new BadRequestException('Выберите хотя бы одну фотографию');
+    }
+    await this.getOneToolById(id);
+    const storedImages = [];
+    try {
+      for (const file of files) {
+        storedImages.push(await this.fileService.storeImage(file));
+      }
+      await this.toolRepository.sequelize.transaction(async (transaction) => {
+        const tool = await this.lockTool(id, transaction);
+        const currentCount = await this.toolImageRepository.count({
+          where: { tool_id: id },
+          transaction,
+        });
+        if (currentCount + storedImages.length > 5) {
+          throw new BadRequestException(
+            'У инструмента может быть не больше пяти фотографий',
+          );
+        }
+        const lastImage = await this.toolImageRepository.findOne({
+          where: { tool_id: id },
+          order: [
+            ['sort_order', 'DESC'],
+            ['id', 'DESC'],
+          ],
+          transaction,
+        });
+        const firstSortOrder = (lastImage?.sort_order ?? -1) + 1;
+        for (const [index, stored] of storedImages.entries()) {
+          const isCover = currentCount === 0 && index === 0;
+          await this.toolImageRepository.create(
+            {
+              tool_id: id,
+              ...stored,
+              sort_order: firstSortOrder + index,
+              is_cover: isCover,
+              alt: tool.label,
+            },
+            { transaction },
+          );
+          if (isCover) {
+            await tool.update({ image: stored.storage_key }, { transaction });
+          }
+        }
+      });
+    } catch (error) {
+      for (const stored of storedImages) {
+        this.fileService.removeFile(stored.storage_key);
+      }
+      throw error;
+    }
+    return this.getOneToolById(id);
+  }
+
+  async sortToolImages(id: number, imageIds: number[]) {
+    await this.toolRepository.sequelize.transaction(async (transaction) => {
+      await this.lockTool(id, transaction);
+      const images = await this.toolImageRepository.findAll({
+        where: { tool_id: id },
+        order: [
+          ['sort_order', 'ASC'],
+          ['id', 'ASC'],
+        ],
+        transaction,
+      });
+      const currentIds = images.map((image) => image.id).sort((a, b) => a - b);
+      const requestedIds = [...imageIds].sort((a, b) => a - b);
+      if (
+        currentIds.length !== requestedIds.length ||
+        currentIds.some((imageId, index) => imageId !== requestedIds[index])
+      ) {
+        throw new BadRequestException(
+          'Передайте все фотографии инструмента без повторений',
+        );
+      }
+      for (const [sortOrder, imageId] of imageIds.entries()) {
+        await this.toolImageRepository.update(
+          { sort_order: sortOrder },
+          { where: { id: imageId, tool_id: id }, transaction },
+        );
+      }
+    });
+    return this.getOneToolById(id);
+  }
+
+  async setToolImageCover(id: number, imageId: number) {
+    await this.toolRepository.sequelize.transaction(async (transaction) => {
+      const tool = await this.lockTool(id, transaction);
+      const image = await this.toolImageRepository.findOne({
+        where: { id: imageId, tool_id: id },
+        transaction,
+      });
+      if (!image) throw new NotFoundException('Фотография не найдена');
+      if (!image.is_cover) {
+        await this.toolImageRepository.update(
+          { is_cover: false },
+          { where: { tool_id: id }, transaction },
+        );
+        await this.toolImageRepository.update(
+          { is_cover: true },
+          { where: { id: image.id, tool_id: id }, transaction },
+        );
+      }
+      await tool.update({ image: image.storage_key }, { transaction });
+    });
+    return this.getOneToolById(id);
+  }
+
+  async deleteToolImage(id: number, imageId: number) {
+    let deletedPath: string;
+    await this.toolRepository.sequelize.transaction(async (transaction) => {
+      const tool = await this.lockTool(id, transaction);
+      const image = await this.toolImageRepository.findOne({
+        where: { id: imageId, tool_id: id },
+        transaction,
+      });
+      if (!image) throw new NotFoundException('Фотография не найдена');
+      deletedPath = image.storage_key;
+      const wasCover = image.is_cover;
+      await image.destroy({ transaction });
+      if (wasCover) {
+        const nextCover = await this.toolImageRepository.findOne({
+          where: { tool_id: id },
+          order: [
+            ['sort_order', 'ASC'],
+            ['id', 'ASC'],
+          ],
+          transaction,
+        });
+        if (nextCover) {
+          await nextCover.update({ is_cover: true }, { transaction });
+        }
+        await tool.update(
+          { image: nextCover?.storage_key ?? null },
+          { transaction },
+        );
+      }
+    });
+    await this.removeImageIfUnused(deletedPath);
+    return this.getOneToolById(id);
+  }
+
+  private async lockTool(id: number, transaction: Transaction) {
+    const tool = await this.toolRepository.findByPk(id, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!tool) throw new NotFoundException(`Инструмент с ID ${id} не найден`);
     return tool;
+  }
+
+  private async removeImageIfUnused(storageKey: string) {
+    if (!storageKey) return;
+    const references = await this.toolImageRepository.count({
+      where: { storage_key: storageKey },
+    });
+    if (references === 0) this.fileService.removeFile(storageKey);
+  }
+
+  private async withCatalogData(tools: Tool[]) {
+    await this.withRelations(tools);
+    await this.withImages(tools);
+    return tools;
+  }
+
+  private async withImages(tools: Tool[]) {
+    if (!tools.length) return tools;
+    const images = await this.toolImageRepository.findAll({
+      where: { tool_id: tools.map((tool) => tool.id) },
+      order: [
+        ['tool_id', 'ASC'],
+        ['sort_order', 'ASC'],
+        ['id', 'ASC'],
+      ],
+    });
+    for (const tool of tools) {
+      tool.setDataValue(
+        'images',
+        images.filter((image) => image.tool_id === tool.id) as never,
+      );
+    }
+    return tools;
   }
 
   // Serialize catalog relationship edits, including role changes and deletions.

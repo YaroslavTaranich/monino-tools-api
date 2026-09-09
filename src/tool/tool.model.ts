@@ -4,10 +4,12 @@ import {
   Column,
   DataType,
   ForeignKey,
+  HasMany,
   Table,
 } from 'sequelize-typescript';
 import { Category } from '../category/category.model';
 import { ToolType } from '../tool-type/tool-type.model';
+import { ToolImage } from './tool-image.model';
 
 interface ToolCreationAtrr {
   name: string;
@@ -131,4 +133,7 @@ export class Tool extends Model<Tool, ToolCreationAtrr> {
 
   @BelongsTo(() => Category)
   category: Category;
+
+  @HasMany(() => ToolImage)
+  images: ToolImage[];
 }

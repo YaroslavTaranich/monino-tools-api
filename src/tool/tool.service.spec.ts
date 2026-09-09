@@ -14,10 +14,14 @@ describe('ToolService tool types', () => {
   const toolTypeRepository = {
     findByPk: jest.fn(),
   };
+  const toolImageRepository = {
+    findAll: jest.fn().mockResolvedValue([]),
+  };
   const fileService = {};
   const service = new ToolService(
     toolRepository as never,
     toolTypeRepository as never,
+    toolImageRepository as never,
     fileService as never,
   );
 

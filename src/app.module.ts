@@ -11,6 +11,7 @@ import { FileModule } from './file/file.module';
 import { HealthModule } from './health/health.module';
 import { ToolType } from './tool-type/tool-type.model';
 import { ToolTypeModule } from './tool-type/tool-type.module';
+import { ToolImage } from './tool/tool-image.model';
 
 @Module({
   controllers: [],
@@ -27,7 +28,7 @@ import { ToolTypeModule } from './tool-type/tool-type.module';
       username: process.env.POSTGRES_USER,
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
-      models: [Category, Tool, ToolType, User],
+      models: [Category, Tool, ToolImage, ToolType, User],
       autoLoadModels: true,
       synchronize: false,
     }),
