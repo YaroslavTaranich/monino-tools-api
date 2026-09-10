@@ -21,6 +21,20 @@ export interface StoredImage {
   size: number;
 }
 
+export interface ImageCleanupResult {
+  scanned: number;
+  referenced: number;
+  retainedByGracePeriod: number;
+  orphaned: string[];
+  deleted: number;
+}
+
+interface ImageCleanupOptions {
+  deleteFiles: boolean;
+  minAgeMs: number;
+  now?: number;
+}
+
 const imageFormats = new Set(['jpeg', 'png', 'webp']);
 const maxImageDimension = 8000;
 const outputImageDimension = 2000;
@@ -112,6 +126,51 @@ export class FileService {
     } catch (error) {
       throw new HttpException(error.message, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+  }
+
+  cleanupOrphanedImages(
+    referencedStorageKeys: Set<string>,
+    options: ImageCleanupOptions,
+  ): ImageCleanupResult {
+    const directory = this.resolveStaticPath(FileType.IMAGE);
+    const result: ImageCleanupResult = {
+      scanned: 0,
+      referenced: 0,
+      retainedByGracePeriod: 0,
+      orphaned: [],
+      deleted: 0,
+    };
+    if (!fs.existsSync(directory)) return result;
+
+    const now = options.now ?? Date.now();
+    const entries = fs
+      .readdirSync(directory, { withFileTypes: true })
+      .filter((entry) => entry.isFile())
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of entries) {
+      result.scanned += 1;
+      const storageKey = `${FileType.IMAGE}/${entry.name}`;
+      if (referencedStorageKeys.has(storageKey)) {
+        result.referenced += 1;
+        continue;
+      }
+
+      const filePath = path.resolve(directory, entry.name);
+      const age = now - fs.statSync(filePath).mtimeMs;
+      if (age < options.minAgeMs) {
+        result.retainedByGracePeriod += 1;
+        continue;
+      }
+
+      result.orphaned.push(storageKey);
+      if (options.deleteFiles) {
+        fs.unlinkSync(filePath);
+        result.deleted += 1;
+      }
+    }
+
+    return result;
   }
 
   showFileByPath(filePath: string) {

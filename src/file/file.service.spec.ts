@@ -49,4 +49,54 @@ describe('FileService gallery images', () => {
       'Неверный путь к файлу',
     );
   });
+
+  it('only removes old image files without database references', () => {
+    const imageDirectory = path.resolve(directory, 'image');
+    fs.mkdirSync(imageDirectory);
+    const now = Date.now();
+    const oldDate = new Date(now - 48 * 60 * 60 * 1000);
+    for (const fileName of ['referenced.webp', 'orphan.webp', 'fresh.webp']) {
+      fs.writeFileSync(path.resolve(imageDirectory, fileName), fileName);
+    }
+    fs.utimesSync(
+      path.resolve(imageDirectory, 'referenced.webp'),
+      oldDate,
+      oldDate,
+    );
+    fs.utimesSync(
+      path.resolve(imageDirectory, 'orphan.webp'),
+      oldDate,
+      oldDate,
+    );
+
+    const preview = service.cleanupOrphanedImages(
+      new Set(['image/referenced.webp']),
+      { deleteFiles: false, minAgeMs: 24 * 60 * 60 * 1000, now },
+    );
+    expect(preview).toEqual({
+      scanned: 3,
+      referenced: 1,
+      retainedByGracePeriod: 1,
+      orphaned: ['image/orphan.webp'],
+      deleted: 0,
+    });
+    expect(fs.existsSync(path.resolve(imageDirectory, 'orphan.webp'))).toBe(
+      true,
+    );
+
+    const cleanup = service.cleanupOrphanedImages(
+      new Set(['image/referenced.webp']),
+      { deleteFiles: true, minAgeMs: 24 * 60 * 60 * 1000, now },
+    );
+    expect(cleanup.deleted).toBe(1);
+    expect(fs.existsSync(path.resolve(imageDirectory, 'referenced.webp'))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.resolve(imageDirectory, 'fresh.webp'))).toBe(
+      true,
+    );
+    expect(fs.existsSync(path.resolve(imageDirectory, 'orphan.webp'))).toBe(
+      false,
+    );
+  });
 });

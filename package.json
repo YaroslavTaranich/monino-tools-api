@@ -15,6 +15,7 @@
     "migration:up": "node dist/database/migrate.js up",
     "migration:down": "node dist/database/migrate.js down",
     "migration:status": "node dist/database/migrate.js status",
+    "images:cleanup": "node dist/file/cleanup-images.js",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
