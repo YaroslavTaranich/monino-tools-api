@@ -12,7 +12,10 @@ export class HealthController {
   async check() {
     try {
       await this.sequelize.authenticate();
-      return { status: 'ok' };
+      return {
+        status: 'ok',
+        version: process.env.APP_VERSION ?? 'development',
+      };
     } catch {
       throw new ServiceUnavailableException({ status: 'error' });
     }

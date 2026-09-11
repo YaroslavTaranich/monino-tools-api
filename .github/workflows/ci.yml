@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [master]
+    tags: ['v*']
   pull_request:
     branches: [master]
 
@@ -19,5 +20,8 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - name: Verify release tag
+        if: github.ref_type == 'tag'
+        run: test "${GITHUB_REF_NAME}" = "v$(node -p \"require('./package.json').version\")"
       - run: npm test -- --runInBand
       - run: npm run build
