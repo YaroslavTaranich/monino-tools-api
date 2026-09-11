@@ -13,7 +13,13 @@ RUN npm prune --omit=dev
 FROM node:20-alpine AS runner
 
 WORKDIR /app
+ARG APP_VERSION=development
+ARG VCS_REF=unknown
 ENV NODE_ENV=production
+ENV APP_VERSION=$APP_VERSION
+
+LABEL org.opencontainers.image.version=$APP_VERSION \
+  org.opencontainers.image.revision=$VCS_REF
 
 RUN mkdir -p /app/static
 
