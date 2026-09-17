@@ -7,16 +7,13 @@ import {
   Post,
   Put,
   Query,
-  UploadedFile,
   UploadedFiles,
   UseInterceptors,
 } from '@nestjs/common';
 import { ToolService } from './tool.service';
 import { CreateToolDto } from './dto/create-tool.dto';
 import { Public } from 'src/decorators/Public';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { FileType } from '../file/file.service';
-import { imageParseFilePipe } from '../file/file.controller';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { SortToolImagesDto } from './dto/sort-tool-images.dto';
 
 @Controller('tools')
@@ -51,16 +48,6 @@ export class ToolController {
   @Delete(':id')
   removeOne(@Param('id') id: number) {
     return this.toolService.deleteToolById(id);
-  }
-
-  @Post(':id/image')
-  @UseInterceptors(FileInterceptor(FileType.IMAGE))
-  async updateImageById(
-    @UploadedFile(imageParseFilePipe)
-    file: Express.Multer.File,
-    @Param('id') id: number,
-  ) {
-    return this.toolService.updateToolImage(id, file);
   }
 
   @Post(':id/images')

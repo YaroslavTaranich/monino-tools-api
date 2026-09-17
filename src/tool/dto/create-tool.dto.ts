@@ -46,9 +46,6 @@ export class CreateToolDto {
   readonly html_description;
 
   @Allow()
-  readonly image;
-
-  @Allow()
   readonly price;
 
   @Allow()

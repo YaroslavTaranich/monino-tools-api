@@ -123,52 +123,6 @@ export class ToolService {
     return 'Удалено';
   }
 
-  async updateToolImage(id: number, file: Express.Multer.File) {
-    await this.getOneToolById(id);
-    const stored = await this.fileService.storeImage(file);
-    let oldPath: string;
-    try {
-      await this.toolRepository.sequelize.transaction(async (transaction) => {
-        const tool = await this.lockTool(id, transaction);
-        const cover = await this.toolImageRepository.findOne({
-          where: { tool_id: id, is_cover: true },
-          transaction,
-        });
-        oldPath = cover?.storage_key;
-        if (cover) {
-          await cover.update({ ...stored, alt: tool.label }, { transaction });
-        } else {
-          const imageCount = await this.toolImageRepository.count({
-            where: { tool_id: id },
-            transaction,
-          });
-          if (imageCount >= 5) {
-            throw new BadRequestException(
-              'У инструмента уже загружено пять фотографий',
-            );
-          }
-          await this.toolImageRepository.create(
-            {
-              tool_id: id,
-              ...stored,
-              sort_order: 0,
-              is_cover: true,
-              alt: tool.label,
-            },
-            { transaction },
-          );
-        }
-      });
-    } catch (error) {
-      this.fileService.removeFile(stored.storage_key);
-      throw error;
-    }
-    if (oldPath && oldPath !== stored.storage_key) {
-      await this.removeImageIfUnused(oldPath);
-    }
-    return this.getOneToolById(id);
-  }
-
   async uploadToolImages(id: number, files: Express.Multer.File[]) {
     if (!files.length) {
       throw new BadRequestException('Выберите хотя бы одну фотографию');
@@ -341,11 +295,6 @@ export class ToolService {
     for (const tool of tools) {
       const toolImages = images.filter((image) => image.tool_id === tool.id);
       tool.setDataValue('images', toolImages as never);
-      tool.setDataValue(
-        'image' as never,
-        (toolImages.find((image) => image.is_cover)?.storage_key ??
-          null) as never,
-      );
     }
     return tools;
   }
@@ -433,7 +382,7 @@ export class ToolService {
       id: number;
       name: string;
       label: string;
-      image: string;
+      cover_image: string;
       price: number;
       zalog: number;
       categoryId: number;
@@ -441,7 +390,7 @@ export class ToolService {
     }>(
       `
       SELECT links.source_id, t.id, t.name, t.label,
-             cover.storage_key AS image, t.price, t.zalog,
+             cover.storage_key AS cover_image, t.price, t.zalog,
              t."categoryId", t.accessory_only
       FROM (
         SELECT tool_id AS source_id, accessory_tool_id AS target_id, tool_sort_order AS sort_order
@@ -465,7 +414,7 @@ export class ToolService {
           id: row.id,
           name: row.name,
           label: row.label,
-          image: row.image,
+          cover_image: row.cover_image,
           price: row.price,
           zalog: row.zalog,
           categoryId: row.categoryId,
