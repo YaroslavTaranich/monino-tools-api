@@ -25,7 +25,6 @@ export class ToolService {
     try {
       const typeFields = await this.resolveToolType(dto);
       const { related_tool_ids, ...fields } = dto;
-      delete fields.image;
       const id = await this.toolRepository.sequelize.transaction(
         async (transaction) => {
           await this.lockRelations(transaction);
@@ -91,7 +90,6 @@ export class ToolService {
 
     const typeFields = await this.resolveToolType(newData);
     const { related_tool_ids, ...fields } = newData;
-    delete fields.image;
     await this.toolRepository.sequelize.transaction(async (transaction) => {
       await this.lockRelations(transaction);
       const tool = await this.toolRepository.findByPk(id, { transaction });
@@ -136,15 +134,9 @@ export class ToolService {
           where: { tool_id: id, is_cover: true },
           transaction,
         });
-        oldPath = cover?.storage_key ?? tool.image;
+        oldPath = cover?.storage_key;
         if (cover) {
-          await cover.update(
-            {
-              ...stored,
-              alt: tool.label,
-            },
-            { transaction },
-          );
+          await cover.update({ ...stored, alt: tool.label }, { transaction });
         } else {
           const imageCount = await this.toolImageRepository.count({
             where: { tool_id: id },
@@ -166,7 +158,6 @@ export class ToolService {
             { transaction },
           );
         }
-        await tool.update({ image: stored.storage_key }, { transaction });
       });
     } catch (error) {
       this.fileService.removeFile(stored.storage_key);
@@ -220,9 +211,6 @@ export class ToolService {
             },
             { transaction },
           );
-          if (isCover) {
-            await tool.update({ image: stored.storage_key }, { transaction });
-          }
         }
       });
     } catch (error) {
@@ -267,7 +255,7 @@ export class ToolService {
 
   async setToolImageCover(id: number, imageId: number) {
     await this.toolRepository.sequelize.transaction(async (transaction) => {
-      const tool = await this.lockTool(id, transaction);
+      await this.lockTool(id, transaction);
       const image = await this.toolImageRepository.findOne({
         where: { id: imageId, tool_id: id },
         transaction,
@@ -283,7 +271,6 @@ export class ToolService {
           { where: { id: image.id, tool_id: id }, transaction },
         );
       }
-      await tool.update({ image: image.storage_key }, { transaction });
     });
     return this.getOneToolById(id);
   }
@@ -291,7 +278,7 @@ export class ToolService {
   async deleteToolImage(id: number, imageId: number) {
     let deletedPath: string;
     await this.toolRepository.sequelize.transaction(async (transaction) => {
-      const tool = await this.lockTool(id, transaction);
+      await this.lockTool(id, transaction);
       const image = await this.toolImageRepository.findOne({
         where: { id: imageId, tool_id: id },
         transaction,
@@ -312,10 +299,6 @@ export class ToolService {
         if (nextCover) {
           await nextCover.update({ is_cover: true }, { transaction });
         }
-        await tool.update(
-          { image: nextCover?.storage_key ?? null },
-          { transaction },
-        );
       }
     });
     await this.removeImageIfUnused(deletedPath);
@@ -356,9 +339,12 @@ export class ToolService {
       ],
     });
     for (const tool of tools) {
+      const toolImages = images.filter((image) => image.tool_id === tool.id);
+      tool.setDataValue('images', toolImages as never);
       tool.setDataValue(
-        'images',
-        images.filter((image) => image.tool_id === tool.id) as never,
+        'image' as never,
+        (toolImages.find((image) => image.is_cover)?.storage_key ??
+          null) as never,
       );
     }
     return tools;
@@ -454,7 +440,8 @@ export class ToolService {
       accessory_only: boolean;
     }>(
       `
-      SELECT links.source_id, t.id, t.name, t.label, t.image, t.price, t.zalog,
+      SELECT links.source_id, t.id, t.name, t.label,
+             cover.storage_key AS image, t.price, t.zalog,
              t."categoryId", t.accessory_only
       FROM (
         SELECT tool_id AS source_id, accessory_tool_id AS target_id, tool_sort_order AS sort_order
@@ -462,6 +449,7 @@ export class ToolService {
         UNION ALL
         SELECT accessory_tool_id, tool_id, accessory_sort_order FROM tool_accessories
       ) links JOIN tools t ON t.id = links.target_id
+      LEFT JOIN tool_images cover ON cover.tool_id = t.id AND cover.is_cover = TRUE
       WHERE links.source_id IN (:ids)
       ORDER BY links.source_id, links.sort_order, t.id
     `,

@@ -19,7 +19,6 @@ interface ToolCreationAtrr {
   description: string;
   specification: string;
   html_description: string;
-  image: string;
   price: number;
   zalog: number;
   tool_type_id: number;
@@ -86,12 +85,6 @@ export class Tool extends Model<Tool, ToolCreationAtrr> {
     allowNull: false,
   })
   html_description: string;
-
-  @Column({
-    type: DataType.STRING,
-    unique: false,
-  })
-  image: string;
 
   @Column({
     type: DataType.INTEGER,
