@@ -1,12 +1,9 @@
 import { ImageCleanupService } from './image-cleanup.service';
 
 describe('ImageCleanupService', () => {
-  it('protects category, legacy cover and gallery image references', async () => {
+  it('protects category and gallery image references', async () => {
     const categoryRepository = {
       findAll: jest.fn().mockResolvedValue([{ image: 'image/category.jpg' }]),
-    };
-    const toolRepository = {
-      findAll: jest.fn().mockResolvedValue([{ image: 'image/cover.webp' }]),
     };
     const toolImageRepository = {
       findAll: jest
@@ -18,7 +15,6 @@ describe('ImageCleanupService', () => {
     };
     const service = new ImageCleanupService(
       categoryRepository as never,
-      toolRepository as never,
       toolImageRepository as never,
       fileService as never,
     );
@@ -28,7 +24,7 @@ describe('ImageCleanupService', () => {
 
     const references = fileService.cleanupOrphanedImages.mock.calls[0][0];
     expect(references).toEqual(
-      new Set(['image/category.jpg', 'image/cover.webp', 'image/gallery.webp']),
+      new Set(['image/category.jpg', 'image/gallery.webp']),
     );
     expect(fileService.cleanupOrphanedImages).toHaveBeenCalledWith(
       references,
