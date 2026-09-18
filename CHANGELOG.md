@@ -3,6 +3,17 @@
 Все заметные изменения API публикуются в этом файле. Формат основан на
 [Keep a Changelog](https://keepachangelog.com/ru/1.1.0/), версии следуют SemVer.
 
+## [2.0.0](https://github.com/YaroslavTaranich/monino-tools-api/compare/v1.1.0...v2.0.0) (2026-09-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove legacy tool image contract
+
+### Новые возможности
+
+* remove legacy tool image contract ([d37ce0d](https://github.com/YaroslavTaranich/monino-tools-api/commit/d37ce0dc9617194b34dda56c3fb53b418add1803))
+
 ## [1.1.0](https://github.com/YaroslavTaranich/monino-tools-api/compare/v1.0.2...v1.1.0) (2026-09-17)
 
 
