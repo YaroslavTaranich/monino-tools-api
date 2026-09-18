@@ -6,6 +6,7 @@ import { relaxLegacyToolType } from './005-relax-legacy-tool-type';
 import { finalizeToolTypes } from './006-finalize-tool-types';
 import { toolAccessories } from './007-tool-accessories';
 import { toolImages } from './008-tool-images';
+import { removeLegacyToolImage } from './009-remove-legacy-tool-image';
 import { Migration } from './types';
 
 export const migrations: Migration[] = [
@@ -17,4 +18,5 @@ export const migrations: Migration[] = [
   finalizeToolTypes,
   toolAccessories,
   toolImages,
+  removeLegacyToolImage,
 ];
